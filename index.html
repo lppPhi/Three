@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Endless Runner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Container cho màn hình game -->
+    <div id="gameContainer">
+        <!-- Canvas nơi Three.js sẽ vẽ -->
+        <canvas id="renderCanvas"></canvas>
+
+        <!-- Giao diện người dùng -->
+        <div id="uiContainer">
+            <div id="scoreDisplay">Score: 0</div>
+            <div id="instructions">Use A/D or Left/Right Arrows to Move</div>
+        </div>
+
+        <!-- Màn hình Bắt đầu / Game Over -->
+        <div id="overlay" class="active">
+            <div id="overlayContent">
+                <h1 id="overlayTitle">Endless Runner</h1>
+                <p id="overlayText">Press Start to Play!</p>
+                <p id="finalScore" class="hidden">Final Score: 0</p>
+                <button id="startButton">Start</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link tới thư viện Three.js qua CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+    <!-- Link tới file Javascript của game (type="module") -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
