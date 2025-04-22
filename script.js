@@ -48,80 +48,99 @@ const gravity = -19.62;
 // === BẮT ĐẦU PHẦN MAP / PLATFORMS ĐÃ CẬP NHẬT ===
 // ===========================================================
 const platforms = [];
-const platformMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8, metalness: 0.2 }); // Thay đổi vật liệu chút
-const winPlatformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Màu xanh lá cho platform thắng
-const obstacleMaterial = new THREE.MeshStandardMaterial({ color: 0xcc6600 }); // Vật liệu cho vật cản
+const platformMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8, metalness: 0.2 });
+const winPlatformMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+// Giữ lại obstacleMaterial phòng khi cần dùng trong tương lai, nhưng không dùng trong vòng lặp này
+const obstacleMaterial = new THREE.MeshStandardMaterial({ color: 0xcc6600 });
 
 function createPlatform(width, height, depth, x, y, z, material = platformMaterial) {
     const geometry = new THREE.BoxGeometry(width, height, depth);
     const platform = new THREE.Mesh(geometry, material);
     platform.position.set(x, y, z);
     platform.receiveShadow = true;
-    platform.castShadow = true;
+    platform.castShadow = true; // Giữ lại nếu muốn bóng đổ từ platform
     scene.add(platform);
-    platforms.push(platform); // *** Quan trọng: Thêm vào mảng để kiểm tra va chạm ***
+    platforms.push(platform); // Quan trọng: Thêm vào mảng để kiểm tra va chạm
     return platform;
 }
 
-// --- Tạo đường đi mới phức tạp hơn ---
+// --- Tự động tạo đường đi 100 bậc ---
+const numberOfPlatforms = 100;
+let lastPlatform; // Để lưu trữ platform cuối cùng được tạo
 
-// 1. Platform bắt đầu
-createPlatform(5, 1, 5, 0, -0.5, 2); // Platform bắt đầu (giữ nguyên)
+// 1. Platform bắt đầu (Giữ nguyên từ code gốc của bạn)
+const startPlatform = createPlatform(5, 1, 5, 0, -0.5, 2);
+lastPlatform = startPlatform;
 
-// 2. Nhảy ngắn lên cao hơn
-createPlatform(2, 1, 2, 0, 1.0, -2);
+// --- Tham số tạo platform ngẫu nhiên (Có thể cần điều chỉnh) ---
+const minJumpHeight = 0.2;       // Độ cao tối thiểu giữa các bậc
+const maxJumpHeight = 2.2;       // Độ cao tối đa (phải nhỏ hơn khả năng nhảy tối đa ~3.0)
+const minHorizontalDistance = 1.5; // Khoảng cách ngang tối thiểu
+const maxHorizontalDistance = 4.0; // Khoảng cách ngang tối đa (ảnh hưởng độ khó)
+const platformSizeMin = 1.0;     // Kích thước tối thiểu (rộng/sâu)
+const platformSizeMax = 3.0;     // Kích thước tối đa
+const maxLateralShift = 2.0;     // Độ lệch ngang tối đa (X) cho mỗi bước nhảy
 
-// 3. Nhảy xa sang trái và lên cao
-createPlatform(3, 1, 1.5, -5, 2.5, -5);
+// 2. Vòng lặp tạo 98 platform tiếp theo (từ bậc 2 đến 99)
+for (let i = 1; i < numberOfPlatforms - 1; i++) {
+    const lastPos = lastPlatform.position;
 
-// 4. Nhảy tới platform hẹp phía trước
-createPlatform(1, 1, 4, -5, 2.5, -10); // Platform hẹp và dài
+    // Tính toán vị trí ngẫu nhiên cho platform tiếp theo
+    const deltaY = minJumpHeight + Math.random() * (maxJumpHeight - minJumpHeight);
+    const nextY = lastPos.y + deltaY;
 
-// 5. Nhảy qua phải lên platform cao hơn
-createPlatform(2.5, 1, 2.5, 0, 4.0, -12);
+    const horizontalDistance = minHorizontalDistance + Math.random() * (maxHorizontalDistance - minHorizontalDistance);
 
-// 6. *** Chướng ngại vật yêu cầu NGỒI ***
-const crouchBaseY = 4.5;
-const crouchBase = createPlatform(5, 1, 2, 6, crouchBaseY, -12); // Platform sàn để đi qua
-const ceilingHeight = 0.5;
-const gap = playerCrouchHeight + 0.1; // Khoảng trống = chiều cao ngồi + một chút
-// Tính toán Y của trần: Y sàn + nửa chiều cao sàn + khoảng trống + nửa chiều cao trần
-const ceilingY = crouchBase.position.y + (crouchBase.geometry.parameters.height / 2) + gap + (ceilingHeight / 2);
-// Tạo trần nhà
-const ceiling = createPlatform(
-    crouchBase.geometry.parameters.width, // Rộng bằng sàn
-    ceilingHeight,                        // Chiều cao của trần
-    crouchBase.geometry.parameters.depth, // Sâu bằng sàn
-    crouchBase.position.x,                // Cùng X với sàn
-    ceilingY,                             // Vị trí Y đã tính
-    crouchBase.position.z,                // Cùng Z với sàn
-    obstacleMaterial                      // Vật liệu khác để dễ nhận biết
+    // Hướng di chuyển: chủ yếu về phía trước (-Z), có lệch X ngẫu nhiên
+    const angle = (Math.random() - 0.5) * Math.PI * 0.4; // Góc lệch nhỏ (tối đa +/- 36 độ)
+    const deltaX = Math.sin(angle) * horizontalDistance + (Math.random() - 0.5) * maxLateralShift;
+    const deltaZ = -Math.cos(angle) * horizontalDistance; // Luôn đi về Z âm
+
+    const nextX = lastPos.x + deltaX;
+    const nextZ = lastPos.z + deltaZ;
+
+    // Kích thước platform ngẫu nhiên
+    const platformWidth = platformSizeMin + Math.random() * (platformSizeMax - platformSizeMin);
+    const platformDepth = platformSizeMin + Math.random() * (platformSizeMax - platformSizeMin);
+    const platformHeight = 1.0; // Giữ chiều cao cố định
+
+    // Tạo platform mới
+    const newPlatform = createPlatform(platformWidth, platformHeight, platformDepth, nextX, nextY, nextZ);
+    lastPlatform = newPlatform; // Cập nhật platform cuối cùng
+}
+
+// 3. Platform cuối cùng (thứ 100) - Platform chiến thắng
+const lastPos = lastPlatform.position;
+// Tính toán vị trí cho platform cuối cùng tương tự
+const finalDeltaY = minJumpHeight + Math.random() * (maxJumpHeight - minJumpHeight);
+const finalHorizontalDistance = minHorizontalDistance + Math.random() * (maxHorizontalDistance - minHorizontalDistance);
+const finalAngle = (Math.random() - 0.5) * Math.PI * 0.4;
+const finalDeltaX = Math.sin(finalAngle) * finalHorizontalDistance + (Math.random() - 0.5) * maxLateralShift;
+const finalDeltaZ = -Math.cos(finalAngle) * finalHorizontalDistance;
+
+// Tạo platform chiến thắng, làm nó to hơn một chút cho dễ đáp
+const winPlatform = createPlatform(
+    4, // Rộng hơn
+    1,
+    4, // Sâu hơn
+    lastPos.x + finalDeltaX,
+    lastPos.y + finalDeltaY,
+    lastPos.z + finalDeltaZ,
+    winPlatformMaterial // Sử dụng vật liệu chiến thắng
 );
-// platforms.push(ceiling); // Hàm createPlatform đã tự push rồi
+console.log(`Total platforms generated (excluding ground): ${numberOfPlatforms}`);
 
-// 7. Nhảy từ sau khu vực ngồi lên platform nhỏ
-createPlatform(1.5, 1, 1.5, 10, 5.5, -12);
 
-// 8. Chuỗi các bước nhảy ngắn (stepping stones) - yêu cầu chính xác
-createPlatform(0.8, 0.5, 0.8, 10, 5.7, -15); // Lên cao hơn chút
-createPlatform(0.8, 0.5, 0.8, 8, 5.9, -16.5); // Sang trái và lên
-createPlatform(0.8, 0.5, 0.8, 6, 6.1, -18);   // Tiếp tục sang trái và lên
-
-// 9. Nhảy xa cuối cùng đến đích
-const finalPlatformX = 6;
-const finalPlatformY = 7.5;
-const finalPlatformZ = -23;
-const winPlatform = createPlatform(4, 1, 4, finalPlatformX, finalPlatformY, finalPlatformZ, winPlatformMaterial); // Platform cuối cùng - đặt xa hơn
-
-// Thêm một cái sàn lớn bên dưới (giữ nguyên)
-const groundGeometry = new THREE.PlaneGeometry(100, 100);
-const groundMaterialPlane = new THREE.MeshStandardMaterial({ color: 0x999999, side: THREE.DoubleSide }); // Màu khác sàn platform
+// Thêm một cái sàn lớn bên dưới (Giữ nguyên từ code gốc của bạn)
+const groundGeometry = new THREE.PlaneGeometry(100, 100); // Giữ kích thước gốc hoặc tăng nếu cần
+const groundMaterialPlane = new THREE.MeshStandardMaterial({ color: 0x999999, side: THREE.DoubleSide });
 const groundMesh = new THREE.Mesh(groundGeometry, groundMaterialPlane);
 groundMesh.rotation.x = -Math.PI / 2;
-groundMesh.position.y = -10;
+groundMesh.position.y = -10; // Giữ vị trí gốc hoặc điều chỉnh nếu cần
 groundMesh.receiveShadow = true;
 scene.add(groundMesh);
-platforms.push(groundMesh); // Thêm sàn vào danh sách platform
+platforms.push(groundMesh); // Thêm sàn vào danh sách platform để kiểm tra va chạm
+
 
 // ===========================================================
 // === KẾT THÚC PHẦN MAP / PLATFORMS ĐÃ CẬP NHẬT ===
