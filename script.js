@@ -40,7 +40,7 @@ let onGround = false;
 let isCrouching = false;
 const playerSpeed = 5.0;
 const crouchSpeedMultiplier = 0.5;
-const jumpStrength = 10.0; // Có thể cần điều chỉnh nếu làm nhảy xa hơn
+const jumpStrength = 11.0; // Có thể cần điều chỉnh nếu làm nhảy xa hơn
 const gravity = -19.62;
 
 
